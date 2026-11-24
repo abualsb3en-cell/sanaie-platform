@@ -1,77 +1,74 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+"use client";
 
-export default async function ProviderDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
-  const { data: provider, error } = await supabase
-    .from("providers")
-    .select("*")
-    .eq("id", id)
-    .single();
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-  if (error || !provider) {
-    notFound();
+export default function ProviderPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
+
+  const [provider, setProvider] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFoundState, setNotFoundState] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+
+    async function loadProvider() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("providers")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error || !data) {
+        setNotFoundState(true);
+      } else {
+        setProvider(data);
+      }
+      setLoading(false);
+    }
+
+    loadProvider();
+  }, [id]);
+
+  if (loading) {
+    return <div className="p-6 text-center" dir="rtl">جاري تحميل بيانات المهني...</div>;
   }
 
-  const phoneText = String(provider.phone ?? "");
-  const cleanPhone = phoneText.replace(/\D/g, "");
-  const whatsappNumber = cleanPhone.startsWith("0")
-    ? `962${cleanPhone.slice(1)}`
-    : cleanPhone;
-
-  const areasText = Array.isArray(provider.areas)
-    ? provider.areas.join("، ")
-    : "";
+  if (notFoundState || !provider) {
+    return <div className="p-6 text-center" dir="rtl">المهني غير موجود (404)</div>;
+  }
 
   return (
-    <main className="mx-auto max-w-2xl p-6" dir="rtl">
-      <Link
-        href="/"
-        className="mb-6 inline-block rounded border px-4 py-2 text-sm"
-      >
-        ← العودة للرئيسية
-      </Link>
-
-      <div className="rounded-xl border p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">{String(provider.full_name ?? "")}</h1>
-        <p className="mt-1 text-gray-600">
-          {String(provider.city ?? "")}
-          {areasText ? ` - ${areasText}` : ""}
-        </p>
-
-        {provider.bio && <p className="mt-4">{String(provider.bio)}</p>}
-
-        <p className="mt-3 text-sm">
-          سنوات الخبرة: {String(provider.experience_years ?? 0)}
-        </p>
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          {cleanPhone && (
-            <a
-              href={`tel:${cleanPhone}`}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white"
-            >
-              اتصال ({phoneText})
-            </a>
-          )}
-          {whatsappNumber && (
-            <a
-              href={`https://wa.me/${whatsappNumber}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg bg-green-600 px-4 py-2 text-white"
-            >
-              واتساب
-            </a>
-          )}
+    <main className="p-6 max-w-2xl mx-auto" dir="rtl">
+      <h1 className="text-2xl font-bold mb-2">{provider.name}</h1>
+      <p className="text-gray-600 mb-4">{provider.profession || provider.category}</p>
+      {provider.phone && (
+        <div className="flex gap-3 mt-4">
+          <a
+            href={`tel:${provider.phone}`}
+            className="px-4 py-2 rounded bg-blue-600 text-white"
+          >
+            اتصال: {provider.phone}
+          </a>
+          <a
+            href={`https://wa.me/${String(provider.phone).replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2 rounded bg-green-600 text-white"
+          >
+            واتساب
+          </a>
         </div>
-      </div>
+      )}
     </main>
   );
 }
