@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function ProviderPage() {
+function ProviderContent() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
 
@@ -70,5 +70,13 @@ export default function ProviderPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function ProviderPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center" dir="rtl">جاري التحميل...</div>}>
+      <ProviderContent />
+    </Suspense>
   );
 }
